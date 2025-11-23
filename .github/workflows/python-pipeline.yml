@@ -48,20 +48,24 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # FIX: Add step to force repository name to lowercase for GHCR compliance.
+      - name: Set lowercase repo name
+        id: set_repo_lower
+        run: echo "REPO_LOWER=$(echo ${GITHUB_REPOSITORY} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+
       # Extract metadata (tags, labels) for Docker
-      # https://github.com/docker/metadata-action
       - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }}
+          # Use the lowercase name for the image reference
+          images: ghcr.io/${{ steps.set_repo_lower.outputs.REPO_LOWER }}
           tags: |
             type=sha,format=short,prefix=,suffix=
             type=sha,format=long,prefix=,suffix=
             type=ref,event=branch,prefix=,suffix=
 
       # Build and push Docker image with Buildx
-      # https://github.com/docker/build-push-action
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
@@ -86,8 +90,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # FIX: Add step to force repository name to lowercase
+      - name: Set lowercase repo name
+        id: set_repo_lower
+        run: echo "REPO_LOWER=$(echo ${GITHUB_REPOSITORY} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+
       - name: Pull the image from GitHub Container Registry
-        run: docker pull ghcr.io/${{ github.repository }}:${{ github.sha }}
+        run: docker pull ghcr.io/${{ steps.set_repo_lower.outputs.REPO_LOWER }}:${{ github.sha }}
 
       - name: Run the Image
-        run: docker run --rm ghcr.io/${{ github.repository }}:${{ github.sha }} | grep -i hello || exit 1
+        run: docker run --rm ghcr.io/${{ steps.set_repo_lower.outputs.REPO_LOWER }}:${{ github.sha }} | grep -i hello || exit 1
